@@ -1,0 +1,202 @@
+LAMMPS (29 Oct 2020)
+
+
+variable tx equal 0 # displacement in x direction
+variable ty equal 1.80999999750288 # displacement in y direction
+variable tz equal -4.016029415130047 # displacement in z direction
+
+# end end of defining looping parameter------------------
+
+
+
+clear
+
+#Initialize Simulation ---------------------
+units metal
+dimension 3
+boundary s p p
+atom_style atomic
+atom_modify map array
+# ---------- Create Atoms ---------------------
+read_data ./atominfile3
+Reading data file ...
+  triclinic box = (0.0000000 0.0000000 0.0000000) to (208.83353 21.720000 26.104191) with tilt (0.0000000 0.0000000 0.0000000)
+  12 by 1 by 1 MPI processor grid
+  reading atoms ...
+  9984 atoms
+  read_data CPU = 0.012 seconds
+include ./blockfile
+region fixbulk1 block EDGE 74.4167647933809207 EDGE EDGE EDGE EDGE units box
+region fixbulk2 block 134.4167647933809349 EDGE EDGE EDGE EDGE EDGE units box
+region middle block 84.4167647933809207 124.4167647933809207 EDGE EDGE EDGE EDGE units box
+region right block 104.4167747933809238 EDGE EDGE EDGE EDGE EDGE units box
+region bulk block 160.0000000000000000 165.0000000000000000 EDGE EDGE EDGE EDGE units box
+group fixbulk1 region fixbulk1
+3576 atoms in group fixbulk1
+group fixbulk2 region fixbulk2
+3552 atoms in group fixbulk2
+group middle region middle
+1896 atoms in group middle
+group right region right
+4968 atoms in group right
+group bulk region bulk
+240 atoms in group bulk
+
+mass 1 63.546 #Cu
+mass 2 63.546 #Cu
+
+# ---------- Define Interatomic Potential ---------------------
+pair_style meam
+pair_coeff * * library.Cu.meam Cu Cu.meam Cu Cu
+neighbor 2.0 bin
+neigh_modify delay 10 check yes
+
+# ---------- Compute properties of bulk ---------------------
+#0.excess energy
+compute eng all pe/atom
+compute eatoms all reduce sum c_eng
+compute emiddle middle reduce sum c_eng
+compute bulk_dis bulk displace/atom
+compute hulk_dis_ave_x bulk reduce ave c_bulk_dis[1]
+# ---------- Calculate excess values ---------------------
+#per atom properties in Cu crystal
+variable minimumenergy equal -3.54000000004256
+variable gbarea equal "ly * lz"
+
+# ---------- Run Minimization ---------------------
+reset_timestep 0
+
+displace_atoms right move ${tx} ${ty} ${tz} units box
+displace_atoms right move 0 ${ty} ${tz} units box
+displace_atoms right move 0 1.80999999750288 ${tz} units box
+displace_atoms right move 0 1.80999999750288 -4.01602941513005 units box
+Displacing atoms ...
+
+velocity fixbulk1 zero linear
+fix fixbulk1 fixbulk1 setforce 0.0 0.0 0.0
+
+velocity fixbulk2 zero linear
+fix fixbulk2 fixbulk2 setforce NULL 0.0 0.0
+
+min_style cg
+minimize 1.0e-10 1.0e-10 50000 100000
+WARNING: Using 'neigh_modify every 1 delay 0 check yes' setting during minimization (../min.cpp:187)
+Neighbor list info ...
+  update every 1 steps, delay 0 steps, check yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 6
+  ghost atom cutoff = 6
+  binsize = 3, bins = 70 8 9
+  2 neighbor lists, perpetual/occasional/extra = 2 0 0
+  (1) pair meam, perpetual
+      attributes: full, newton on
+      pair build: full/bin/atomonly
+      stencil: full/bin/3d
+      bin: standard
+  (2) pair meam, perpetual, half/full from (1)
+      attributes: half, newton on
+      pair build: halffull/newton
+      stencil: none
+      bin: none
+Per MPI rank memory allocation (min/avg/max) = 11.19 | 11.30 | 11.34 Mbytes
+Step Temp E_pair E_mol TotEng Press Volume 
+       0            0   -34848.824            0   -34848.824    13001.591    118144.12 
+     157            0    -35214.62            0    -35214.62   -1374.1762    118144.12 
+Loop time of 3.0624 on 12 procs for 157 steps with 9984 atoms
+
+95.1% CPU use with 12 MPI tasks x no OpenMP threads
+
+Minimization stats:
+  Stopping criterion = energy tolerance
+  Energy initial, next-to-last, final = 
+     -34848.8243439084  -35214.6198932592  -35214.6198958598
+  Force two-norm initial, final = 609.70836 0.0042951378
+  Force max component initial, final = 87.967292 0.00064745166
+  Final line search alpha, max atom move = 1.0000000 0.00064745166
+  Iterations, force evaluations = 157 310
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 2.6751     | 2.8577     | 3.0121     |   5.3 | 93.32
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.0076287  | 0.071002   | 0.16459    |  23.3 |  2.32
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0.00059938 | 0.0011081  | 0.0013871  |   0.8 |  0.04
+Other   |            | 0.1326     |            |       |  4.33
+
+Nlocal:        832.000 ave         840 max         816 min
+Histogram: 4 0 0 0 0 0 0 0 0 8
+Nghost:        2276.17 ave        2400 max        1735 min
+Histogram: 2 0 0 0 0 0 0 0 0 10
+Neighs:        32066.0 ave       32910 max       30480 min
+Histogram: 2 0 0 0 0 4 0 0 1 5
+FullNghs:      64132.0 ave       65520 max       61200 min
+Histogram: 2 0 0 0 0 4 0 0 0 6
+
+Total # of neighbors = 769584
+Ave neighs/atom = 77.081731
+Neighbor list builds = 0
+Dangerous builds = 0
+
+#--------- RBT right atoms --------
+
+thermo 10000
+thermo_style custom step lx ly lz c_emiddle temp c_hulk_dis_ave_x
+dump            1 all custom 1 final id type x y z c_eng
+run 0
+Per MPI rank memory allocation (min/avg/max) = 11.48 | 11.59 | 11.63 Mbytes
+Step Lx Ly Lz c_emiddle Temp c_hulk_dis_ave_x 
+     157    208.48255        21.72    26.104191   -6684.5402            0   0.27177298 
+Loop time of 5.24521e-06 on 12 procs for 0 steps with 9984 atoms
+
+100.1% CPU use with 12 MPI tasks x no OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 0          | 0          | 0          |   0.0 |  0.00
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0          | 0          | 0          |   0.0 |  0.00
+Output  | 0          | 0          | 0          |   0.0 |  0.00
+Modify  | 0          | 0          | 0          |   0.0 |  0.00
+Other   |            | 5.245e-06  |            |       |100.00
+
+Nlocal:        832.000 ave         840 max         792 min
+Histogram: 1 0 0 0 0 2 0 0 0 9
+Nghost:        2268.33 ave        2400 max        1735 min
+Histogram: 2 0 0 0 0 0 0 0 0 10
+Neighs:        32008.0 ave       32760 max       30480 min
+Histogram: 2 1 0 0 0 2 0 1 0 6
+FullNghs:      64016.0 ave       65520 max       60960 min
+Histogram: 3 0 0 0 0 2 0 1 0 6
+
+Total # of neighbors = 768192
+Ave neighs/atom = 76.942308
+Neighbor list builds = 0
+Dangerous builds = 0
+
+#4.excess energy
+variable esum equal "v_minimumenergy * count(middle)"
+variable xseng equal "c_emiddle - (v_minimumenergy * count(middle))"
+variable gbe equal "(c_emiddle - (v_minimumenergy * count(middle)))/v_gbarea"
+variable gbemJm2 equal ${gbe}*16021.7733
+variable gbemJm2 equal 0.0481491833916983*16021.7733
+variable gbernd equal round(${gbemJm2})
+variable gbernd equal round(771.435300881915)
+variable ave_dis_x equal c_hulk_dis_ave_x
+
+
+#----------- output calculation result of each loop into results file
+print "Grain Boundary energy (meV) = ${gbemJm2};"
+Grain Boundary energy (meV) = 771.435300881915;
+print "All done!"
+All done!
+
+
+
+
+
+
+            
+Total wall time: 0:00:03

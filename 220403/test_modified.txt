@@ -1,0 +1,6 @@
+variable dx equal 1
+variable dy equal input_dy
+variable dz equal input_dz
+
+mass 1 input_mass
+mass 2 input_mass

@@ -1,0 +1,88 @@
+
+
+variable tx equal -1 # displacement in x direction
+variable ty equal 1.81 # displacement in y direction
+variable tz equal -4 # displacement in z direction
+variable minus_tx equal -1*${tx}
+variable minus_ty equal -1*${ty}
+variable minus_tz equal -1*${tz}
+
+# end end of defining looping parameter------------------
+
+
+
+clear
+
+#Initialize Simulation --------------------- 
+units metal 
+dimension 3 
+boundary s p p
+atom_style atomic
+atom_modify map array
+# ---------- Create Atoms --------------------- 
+read_data ./atominfile3
+include ./blockfile
+
+mass 1 63.546 # Cu
+mass 2 63.546 # Cu
+mass 3 63.546 # Cu
+
+# ---------- Define Interatomic Potential --------------------- 
+pair_style meam
+pair_coeff * * library.meam Cu Cu.meam Cu Cu Cu
+neighbor 2.0 bin 
+neigh_modify delay 10 check yes 
+
+# ---------- Compute properties of bulk --------------------- 
+#0.excess energy
+compute eng all pe/atom 
+compute eatoms all reduce sum c_eng 
+compute emiddle middle reduce sum c_eng
+compute bulk_dis bulk displace/atom 
+compute hulk_dis_ave_x bulk reduce ave c_bulk_dis[1]
+# ---------- Calculate excess values ---------------------
+#per atom properties in Cu crystal 
+variable minimumenergy equal -3.54000000004256
+variable gbarea equal "ly * lz" 
+
+# ---------- Run Minimization ---------------------
+reset_timestep 0
+
+displace_atoms right move ${tx} ${ty} ${tz} units box
+displace_atoms atoms3 move ${minus_tx} ${minus_ty} ${minus_tz} units box
+
+velocity fixbulk1 zero linear
+fix fixbulk1 fixbulk1 setforce 0.0 0.0 0.0
+
+velocity fixbulk2 zero linear
+fix fixbulk2 fixbulk2 setforce NULL 0.0 0.0
+
+min_style cg 
+minimize 1.0e-10 1.0e-10 50000 100000 
+
+#--------- RBT right atoms -------- 
+
+thermo 10000 
+thermo_style custom step lx ly lz c_emiddle temp c_hulk_dis_ave_x
+dump            1 all custom 1 final id type x y z c_eng 
+run 0
+
+#4.excess energy
+variable esum equal "v_minimumenergy * count(middle)" 
+variable xseng equal "c_emiddle - (v_minimumenergy * count(middle))" 
+variable gbe equal "(c_emiddle - (v_minimumenergy * count(middle)))/v_gbarea" 
+variable gbemJm2 equal ${gbe}*16021.7733 
+variable gbernd equal round(${gbemJm2}) 
+variable ave_dis_x equal c_hulk_dis_ave_x
+
+
+#----------- output calculation result of each loop into results file 
+print "Grain Boundary energy (meV) = ${gbemJm2};"
+print "All done!" 
+
+
+
+
+
+
+            
